@@ -1,23 +1,33 @@
 # AI RAG Test
 
-A simple Rust application for testing RAG (Retrieval-Augmented Generation) concepts.
+A simple Rust application for testing RAG (Retrieval-Augmented Generation) concepts with Meilisearch integration.
 
 ## Getting Started
 
 ### Prerequisites
 
 - Rust 1.75 or later
-- Docker (optional)
+- Docker and Docker Compose
+- Meilisearch (included in Docker Compose)
 
-### Building
+### Quick Start with Docker Compose
 
 ```bash
-cargo build
+# Start Meilisearch and the application
+docker-compose up -d
+
+# View logs
+docker-compose logs -f app
 ```
 
-### Running
+### Local Development
 
 ```bash
+# Start only Meilisearch
+docker-compose up -d meilisearch
+
+# Build and run the application locally
+cargo build
 cargo run
 ```
 
@@ -27,6 +37,30 @@ cargo run
 cargo test
 ```
 
+## Meilisearch Integration
+
+This application demonstrates basic Meilisearch functionality:
+
+- Connecting to a Meilisearch instance
+- Creating and managing indexes
+- Indexing sample documents
+- Performing search queries
+
+### Environment Variables
+
+Copy `.env.example` to `.env` and adjust as needed:
+
+```bash
+cp .env.example .env
+```
+
+### Meilisearch Dashboard
+
+When running with Docker Compose, the Meilisearch dashboard is available at:
+http://localhost:7700
+
+Default master key: `your-master-key-change-this-in-production`
+
 ## Docker
 
 ### Building the Docker image
@@ -35,10 +69,17 @@ cargo test
 docker build -t ai-rag-test .
 ```
 
-### Running the Docker container
+### Running with Docker Compose
 
 ```bash
-docker run -p 8080:8080 ai-rag-test
+# Start all services
+docker-compose up -d
+
+# Stop all services
+docker-compose down
+
+# Stop and remove volumes
+docker-compose down -v
 ```
 
 ## Development
@@ -48,6 +89,13 @@ This project uses standard Rust tooling:
 - `cargo fmt` - Format code
 - `cargo clippy` - Lint code
 - `cargo test` - Run tests
+
+### Dependencies
+
+- `meilisearch-sdk` - Official Meilisearch Rust client
+- `tokio` - Async runtime
+- `serde` - Serialization framework
+- `serde_json` - JSON support
 
 ## CI/CD
 

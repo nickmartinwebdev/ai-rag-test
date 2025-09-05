@@ -1,0 +1,35 @@
+version: '3.8'
+
+services:
+  meilisearch:
+    image: getmeili/meilisearch:v1.5
+    container_name: meilisearch
+    ports:
+      - "7700:7700"
+    volumes:
+      - meilisearch_data:/meili_data
+    environment:
+      - MEILI_ENV=development
+      - MEILI_MASTER_KEY=your-master-key-change-this-in-production
+      - MEILI_NO_ANALYTICS=true
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:7700/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  app:
+    build: .
+    container_name: ai-rag-test
+    ports:
+      - "8080:8080"
+    depends_on:
+      - meilisearch
+    environment:
+      - MEILISEARCH_URL=http://meilisearch:7700
+      - MEILISEARCH_API_KEY=your-master-key-change-this-in-production
+    restart: unless-stopped
+
+volumes:
+  meilisearch_data:
