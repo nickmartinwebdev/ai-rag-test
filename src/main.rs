@@ -1,4 +1,4 @@
-use meilisearch_sdk::{Client, IndexesQuery, SearchQuery};
+use meilisearch_sdk::client::Client;
 use serde::{Deserialize, Serialize};
 use std::env;
 
@@ -40,8 +40,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         Ok(_) => println!("📚 Using existing index: {}", index_name),
         Err(_) => {
             println!("🔨 Creating new index: {}", index_name);
-            client.create_index(index_name, Some("id")).await?;
-            println!("✅ Index created successfully");
+            match client.create_index(index_name, Some("id")).await {
+                Ok(_) => println!("✅ Index created successfully"),
+                Err(e) => {
+                    eprintln!("❌ Failed to create index: {}", e);
+                    return Err(e.into());
+                }
+            }
         }
     }
 
@@ -66,28 +71,35 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Index documents
     println!("📝 Indexing sample documents...");
-    let task = index.add_documents(&documents, Some("id")).await?;
-    println!("⏳ Indexing task ID: {}", task.task_uid);
+    match index.add_documents(&documents, Some("id")).await {
+        Ok(task) => {
+            println!("⏳ Indexing documents...");
 
-    // Wait for indexing to complete
-    let task = client.wait_for_task(task, None, None).await?;
-    if task.is_success() {
-        println!("✅ Documents indexed successfully");
-    } else {
-        println!("❌ Indexing failed: {:?}", task.error);
+            // Wait for indexing to complete with timeout
+            match client.wait_for_task(task, None, None).await {
+                Ok(_) => {
+                    println!("✅ Documents indexed successfully");
+                }
+                Err(e) => {
+                    eprintln!("❌ Indexing task failed: {}", e);
+                }
+            }
+        }
+        Err(e) => {
+            eprintln!("❌ Failed to start indexing: {}", e);
+        }
     }
+
+    // Add a small delay to ensure indexing is complete
+    tokio::time::sleep(tokio::time::Duration::from_millis(1000)).await;
 
     // Perform a search
     println!("\n🔍 Searching for 'RAG'...");
-    let search_query = SearchQuery::new(&index)
+    match index
+        .search()
         .with_query("RAG")
         .with_limit(5)
-        .build();
-
-    match index
-        .search::<Document>()
-        .with_query(&search_query)
-        .execute()
+        .execute::<Document>()
         .await
     {
         Ok(search_results) => {
@@ -104,15 +116,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Perform another search
     println!("\n🔍 Searching for 'fast'...");
-    let search_query = SearchQuery::new(&index)
+    match index
+        .search()
         .with_query("fast")
         .with_limit(5)
-        .build();
-
-    match index
-        .search::<Document>()
-        .with_query(&search_query)
-        .execute()
+        .execute::<Document>()
         .await
     {
         Ok(search_results) => {
@@ -124,6 +132,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         Err(e) => {
             eprintln!("❌ Search failed: {}", e);
+        }
+    }
+
+    // List all documents in the index
+    println!("\n📋 Listing all documents in index...");
+    match index.search().execute::<Document>().await {
+        Ok(all_results) => {
+            println!("📊 Total documents in index: {}", all_results.hits.len());
+            for (i, hit) in all_results.hits.iter().enumerate() {
+                println!("  {}. {} (ID: {})", i + 1, hit.result.title, hit.result.id);
+            }
+        }
+        Err(e) => {
+            eprintln!("❌ Failed to list documents: {}", e);
         }
     }
 
